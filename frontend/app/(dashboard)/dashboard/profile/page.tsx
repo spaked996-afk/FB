@@ -1,45 +1,13 @@
 "use client"
 
-import { useState } from "react"
 import { useSession } from "@/hooks/use-session"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
-import { UserCircle, Key, Shield, Loader2 } from "lucide-react"
-import { toast } from "sonner"
+import { UserCircle, Key, Shield, Info } from "lucide-react"
 
 export default function ProfilePage() {
   const { session, isLoading } = useSession()
-  const [currentPassword, setCurrentPassword] = useState("")
-  const [newPassword, setNewPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
-  const [saving, setSaving] = useState(false)
-
-  async function handleChangePassword(e: React.FormEvent) {
-    e.preventDefault()
-
-    if (newPassword !== confirmPassword) {
-      toast.error("Пароли не совпадают")
-      return
-    }
-
-    if (newPassword.length < 6) {
-      toast.error("Пароль должен быть не менее 6 символов")
-      return
-    }
-
-    setSaving(true)
-    // Мок -- API пока нет
-    await new Promise((r) => setTimeout(r, 1000))
-    toast.success("Пароль изменён (демо)")
-    setCurrentPassword("")
-    setNewPassword("")
-    setConfirmPassword("")
-    setSaving(false)
-  }
 
   if (isLoading) {
     return (
@@ -120,48 +88,18 @@ export default function ProfilePage() {
             </h3>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleChangePassword} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="current-password">Текущий пароль</Label>
-                <Input
-                  id="current-password"
-                  type="password"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  required
-                />
+            <div className="flex flex-col items-center justify-center py-8">
+              <div className="rounded-lg bg-muted p-3">
+                <Info className="h-6 w-6 text-muted-foreground" />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="new-password">Новый пароль</Label>
-                <Input
-                  id="new-password"
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="confirm-password">Подтвердите пароль</Label>
-                <Input
-                  id="confirm-password"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                />
-              </div>
-              <Button type="submit" disabled={saving}>
-                {saving ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Сохранение...
-                  </>
-                ) : (
-                  "Сохранить пароль"
-                )}
-              </Button>
-            </form>
+              <p className="mt-3 text-sm font-medium text-foreground">
+                Смена пароля временно недоступна
+              </p>
+              <p className="mt-1 text-center text-xs text-muted-foreground">
+                API для смены пароля находится в разработке.
+                Обратитесь к администратору для изменения пароля.
+              </p>
+            </div>
           </CardContent>
         </Card>
       </div>

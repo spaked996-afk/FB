@@ -3,23 +3,12 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { Activity, Phone, Clock, Hash } from "lucide-react"
-import type { JobInfo } from "@/lib/types"
+import { Activity, Phone, Hash } from "lucide-react"
+import type { ActiveJobResponse } from "@/lib/types"
 
 interface JobStatusProps {
-  job: JobInfo | null
+  job: ActiveJobResponse | null
   isLoading: boolean
-}
-
-const statusConfig: Record<
-  string,
-  { label: string; variant: "default" | "secondary" | "destructive" | "outline" }
-> = {
-  pending: { label: "Ожидание", variant: "secondary" },
-  running: { label: "Выполняется", variant: "default" },
-  completed: { label: "Завершено", variant: "outline" },
-  error: { label: "Ошибка", variant: "destructive" },
-  stopped: { label: "Остановлено", variant: "secondary" },
 }
 
 export function JobStatus({ job, isLoading }: JobStatusProps) {
@@ -37,7 +26,7 @@ export function JobStatus({ job, isLoading }: JobStatusProps) {
     )
   }
 
-  if (!job) {
+  if (!job || job.status === "idle" || !job.job_id) {
     return (
       <Card>
         <CardHeader className="flex flex-row items-center gap-2 pb-4">
@@ -53,10 +42,9 @@ export function JobStatus({ job, isLoading }: JobStatusProps) {
     )
   }
 
-  const config = statusConfig[job.status] || statusConfig.pending
   const progress =
-    job.total_rows > 0
-      ? Math.round((job.processed_rows / job.total_rows) * 100)
+    job.progress_total > 0
+      ? Math.round((job.progress_current / job.progress_total) * 100)
       : 0
 
   return (
@@ -66,48 +54,35 @@ export function JobStatus({ job, isLoading }: JobStatusProps) {
           <Activity className="h-5 w-5 text-primary" />
           <h3 className="text-lg font-semibold text-foreground">Статус задачи</h3>
         </div>
-        <Badge variant={config.variant}>{config.label}</Badge>
+        <Badge variant="default">Выполняется</Badge>
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
           <div className="mb-1 flex justify-between text-sm">
             <span className="text-muted-foreground">Прогресс</span>
             <span className="text-foreground">
-              {job.processed_rows} / {job.total_rows} строк ({progress}%)
+              {job.progress_current} / {job.progress_total} строк ({progress}%)
             </span>
           </div>
           <Progress value={progress} className="h-2" />
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 gap-4">
           <div className="flex items-center gap-2">
             <Hash className="h-4 w-4 text-muted-foreground" />
             <div>
-              <p className="text-xs text-muted-foreground">Строки</p>
-              <p className="text-sm font-medium text-foreground">{job.processed_rows}</p>
+              <p className="text-xs text-muted-foreground">Обработано</p>
+              <p className="text-sm font-medium text-foreground">{job.progress_current}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <Phone className="h-4 w-4 text-muted-foreground" />
             <div>
-              <p className="text-xs text-muted-foreground">Телефоны</p>
-              <p className="text-sm font-medium text-foreground">{job.found_phones}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-muted-foreground" />
-            <div>
-              <p className="text-xs text-muted-foreground">Лист</p>
-              <p className="text-sm font-medium text-foreground">{job.sheet_name}</p>
+              <p className="text-xs text-muted-foreground">Найдено телефонов</p>
+              <p className="text-sm font-medium text-foreground">{job.found}</p>
             </div>
           </div>
         </div>
-
-        {job.error_message && (
-          <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-            {job.error_message}
-          </div>
-        )}
       </CardContent>
     </Card>
   )

@@ -4,7 +4,7 @@ import useSWR from "swr"
 import { StatsCards } from "@/components/admin/stats-cards"
 import { ClientsTable } from "@/components/admin/clients-table"
 import { FinancePanel } from "@/components/admin/finance-panel"
-import type { AdminOverview } from "@/lib/types"
+import type { AdminOverviewResponse } from "@/lib/types"
 
 const fetcher = async (url: string) => {
   const res = await fetch(url)
@@ -13,7 +13,7 @@ const fetcher = async (url: string) => {
 }
 
 export default function AdminPageClient() {
-  const { data, isLoading } = useSWR<AdminOverview>(
+  const { data, isLoading } = useSWR<AdminOverviewResponse>(
     "/api/proxy/admin/overview",
     fetcher,
     { revalidateOnFocus: false }
@@ -28,7 +28,7 @@ export default function AdminPageClient() {
         </p>
       </div>
 
-      <StatsCards data={data ?? null} isLoading={isLoading} />
+      <StatsCards stats={data?.stats ?? null} isLoading={isLoading} />
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         <div className="xl:col-span-2">

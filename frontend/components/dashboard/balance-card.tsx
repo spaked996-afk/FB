@@ -2,15 +2,15 @@
 
 import { Card, CardContent } from "@/components/ui/card"
 import { Wallet } from "lucide-react"
-import type { BalanceInfo } from "@/lib/types"
+import type { BalanceResponse } from "@/lib/types"
 
 interface BalanceCardProps {
-  balance: BalanceInfo | null
+  balance: BalanceResponse | null
   isLoading: boolean
 }
 
 export function BalanceCard({ balance, isLoading }: BalanceCardProps) {
-  if (isLoading || !balance) {
+  if (isLoading) {
     return (
       <Card>
         <CardContent className="flex items-center gap-4 p-6">
@@ -18,7 +18,7 @@ export function BalanceCard({ balance, isLoading }: BalanceCardProps) {
             <Wallet className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <p className="text-sm text-muted-foreground">Баланс</p>
+            <p className="text-sm text-muted-foreground">Баланс API</p>
             <div className="mt-1 h-6 w-24 animate-pulse rounded bg-muted" />
           </div>
         </CardContent>
@@ -26,12 +26,7 @@ export function BalanceCard({ balance, isLoading }: BalanceCardProps) {
     )
   }
 
-  const debtColor =
-    balance.debt <= 0
-      ? "text-success"
-      : balance.debt < 5000
-        ? "text-warning"
-        : "text-destructive"
+  const hasBalance = balance !== null && balance.balance !== null
 
   return (
     <Card>
@@ -40,19 +35,16 @@ export function BalanceCard({ balance, isLoading }: BalanceCardProps) {
           <Wallet className="h-5 w-5 text-primary" />
         </div>
         <div className="flex-1">
-          <p className="text-sm text-muted-foreground">
-            Период: {balance.current_period}
-          </p>
-          <div className="flex items-baseline gap-3">
+          <p className="text-sm text-muted-foreground">Баланс API</p>
+          {hasBalance ? (
             <p className="text-xl font-bold text-foreground">
-              {balance.phones_found} телефонов
+              {balance.balance!.toLocaleString("ru-RU")} руб
             </p>
-            <p className={`text-sm font-medium ${debtColor}`}>
-              {balance.debt > 0
-                ? `Долг: ${balance.debt.toLocaleString("ru-RU")} руб`
-                : "Оплачено"}
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Нет данных о балансе
             </p>
-          </div>
+          )}
         </div>
       </CardContent>
     </Card>

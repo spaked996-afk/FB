@@ -12,6 +12,7 @@ interface JobControlsProps {
   sheets: string[]
   clientId: string
   isRunning: boolean
+  activeJobId: string | null
   onJobStarted: () => void
   onJobStopped: () => void
 }
@@ -20,6 +21,7 @@ export function JobControls({
   sheets,
   clientId,
   isRunning,
+  activeJobId,
   onJobStarted,
   onJobStopped,
 }: JobControlsProps) {
@@ -59,11 +61,17 @@ export function JobControls({
   }
 
   async function handleStop() {
+    if (!activeJobId) {
+      toast.error("Нет активной задачи для остановки")
+      return
+    }
+
     setLoading(true)
     try {
-      const res = await fetch(`/api/proxy/jobs/${clientId}/active/stop`, {
-        method: "POST",
-      })
+      const res = await fetch(
+        `/api/proxy/jobs/${clientId}/${activeJobId}/stop`,
+        { method: "POST" }
+      )
 
       if (!res.ok) {
         toast.error("Не удалось остановить задачу")

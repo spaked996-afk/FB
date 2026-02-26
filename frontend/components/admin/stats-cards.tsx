@@ -2,65 +2,63 @@
 
 import { Card, CardContent } from "@/components/ui/card"
 import { Users, Zap, TrendingUp, AlertTriangle } from "lucide-react"
-import type { AdminOverview } from "@/lib/types"
+import type { AdminStats } from "@/lib/types"
 
 interface StatsCardsProps {
-  data: AdminOverview | null
+  stats: AdminStats | null
   isLoading: boolean
 }
 
-const stats = [
+const statsDef = [
   {
     key: "total_clients" as const,
     label: "Клиенты",
     icon: Users,
-    format: (v?: number) => String(v ?? 0),
+    format: (v: number) => String(v),
   },
   {
-    key: "active_jobs" as const,
+    key: "active_tasks" as const,
     label: "Активные задачи",
     icon: Zap,
-    format: (v?: number) => String(v ?? 0),
+    format: (v: number) => String(v),
   },
   {
-    key: "total_revenue" as const,
-    label: "Выручка",
+    key: "total_period" as const,
+    label: "За период",
     icon: TrendingUp,
-    format: (v?: number) =>
-      `${(v ?? 0).toLocaleString("ru-RU")} руб.`,
+    format: (v: number) => `${v.toLocaleString("ru-RU")} руб.`,
   },
   {
     key: "total_debt" as const,
     label: "Общий долг",
     icon: AlertTriangle,
-    format: (v?: number) =>
-      `${(v ?? 0).toLocaleString("ru-RU")} руб.`,
+    format: (v: number) => `${v.toLocaleString("ru-RU")} руб.`,
   },
 ]
 
-export function StatsCards({ data, isLoading }: StatsCardsProps) {
+export function StatsCards({ stats, isLoading }: StatsCardsProps) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {stats.map((stat) => {
-        const Icon = stat.icon
-        const value = data ? data[stat.key] : 0
-        const isDebt = stat.key === "total_debt" && value > 0
+      {statsDef.map((def) => {
+        const Icon = def.icon
+        const value = stats ? stats[def.key] : 0
+        const isDebt = def.key === "total_debt" && value > 0
 
         return (
-          <Card key={stat.key}>
+          <Card key={def.key}>
             <CardContent className="flex items-center gap-4 p-6">
               <div className={`rounded-lg p-3 ${isDebt ? "bg-destructive/10" : "bg-primary/10"}`}>
                 <Icon className={`h-5 w-5 ${isDebt ? "text-destructive" : "text-primary"}`} />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">
-                  {stat.label}
+                  {def.label}
                 </p>
                 {isLoading ? (
                   <div className="mt-1 h-6 w-16 animate-pulse rounded bg-muted" />
                 ) : (
                   <p className={`text-xl font-bold ${isDebt ? "text-destructive" : "text-foreground"}`}>
-                    {stat.format(value)}
+                    {def.format(value)}
                   </p>
                 )}
               </div>

@@ -1,70 +1,70 @@
-export interface JobInfo {
-  job_id: string
-  client_id: string
-  sheet_name: string
-  status: "pending" | "running" | "completed" | "error" | "stopped"
-  total_rows: number
-  processed_rows: number
-  found_phones: number
-  started_at: string
-  finished_at?: string
-  error_message?: string
+// -------------------------------------------------------
+// Types aligned with real FastAPI backend DTOs
+// -------------------------------------------------------
+
+// GET /jobs/{client_id} — active job polling
+export interface ActiveJobResponse {
+  job_id: string | null
+  status: "running" | "idle"
+  progress_current: number
+  progress_total: number
+  found: number
 }
 
+// GET /jobs/{client_id}/{job_id} — full job details
+export interface JobDetail {
+  running: boolean
+  progress_current: number
+  progress_total: number
+  found: number
+  logs: LogEntry[]
+  worksheet_name: string
+}
+
+// Log entries inside job or from GET /jobs/{client_id}/{job_id}/logs
 export interface LogEntry {
   timestamp: string
-  level: "info" | "success" | "error" | "warning" | "cache"
+  level: string
   message: string
 }
 
-export interface BalanceInfo {
-  client_id: string
-  current_period: string
-  phones_found: number
-  total_cost: number
-  paid: number
-  debt: number
+// GET /balance/{client_id}
+export interface BalanceResponse {
+  balance: number | null
 }
 
-export interface BillingInfo {
+// GET /clients/{client_id}/config
+export interface ClientConfigResponse {
   client_id: string
-  current_period: string
-  sheets: SheetBilling[]
-  total_found: number
-  total_cost: number
-  paid: number
-  debt: number
-}
-
-export interface SheetBilling {
-  sheet_name: string
-  phones_found: number
-  cost: number
-}
-
-export interface ClientConfig {
-  client_id: string
-  username: string
-  spreadsheet_id: string
+  config: Record<string, string>
   sheets: string[]
-  price_per_phone: number
 }
 
-export interface AdminOverview {
+// GET /admin/overview
+export interface AdminOverviewResponse {
+  clients: AdminClientRow[]
+  stats: AdminStats
+}
+
+export interface AdminStats {
   total_clients: number
-  active_jobs: number
-  total_revenue: number
+  active_tasks: number
+  total_period: number
   total_debt: number
-  clients: AdminClientInfo[]
 }
 
-export interface AdminClientInfo {
-  client_id: string
+export interface AdminClientRow {
   username: string
-  active_job: JobInfo | null
-  balance: BalanceInfo
+  client_id: string
+  running: boolean
+  active_job_id: string | null
+  progress: number
+  current_period: number
+  total_paid: number
+  debt: number
 }
 
+// Kept for future API use (no backend endpoints yet)
 export interface UserInfo {
   username: string
   role: "admin" | "client"
@@ -75,7 +75,7 @@ export interface UserInfo {
 
 export interface Notification {
   id: string
-  type: "job_completed" | "billing_updated" | "system" | "warning"
+  type: string
   title: string
   message: string
   read: boolean

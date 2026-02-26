@@ -9,11 +9,10 @@ import { JobStatus } from "@/components/dashboard/job-status"
 import { JobLogs } from "@/components/dashboard/job-logs"
 import { BillingCard } from "@/components/dashboard/billing-card"
 import type {
-  JobInfo,
+  ActiveJobResponse,
   LogEntry,
-  BalanceInfo,
-  BillingInfo,
-  ClientConfig,
+  BalanceResponse,
+  ClientConfigResponse,
 } from "@/lib/types"
 
 const fetcher = async (url: string) => {
@@ -27,7 +26,7 @@ export default function DashboardPage() {
   const clientId = session?.clientId || ""
   const [pollKey, setPollKey] = useState(0)
 
-  const { data: config } = useSWR<ClientConfig>(
+  const { data: config } = useSWR<ClientConfigResponse>(
     clientId ? `/api/proxy/clients/${clientId}/config` : null,
     fetcher,
     { revalidateOnFocus: false }
@@ -36,7 +35,7 @@ export default function DashboardPage() {
   const {
     data: activeJob,
     mutate: mutateJob,
-  } = useSWR<JobInfo>(
+  } = useSWR<ActiveJobResponse>(
     clientId ? `/api/proxy/jobs/${clientId}?_k=${pollKey}` : null,
     fetcher,
     {
@@ -59,15 +58,8 @@ export default function DashboardPage() {
   )
 
   const { data: balance, isLoading: balanceLoading } =
-    useSWR<BalanceInfo>(
+    useSWR<BalanceResponse>(
       clientId ? `/api/proxy/balance/${clientId}` : null,
-      fetcher,
-      { revalidateOnFocus: false }
-    )
-
-  const { data: billing, isLoading: billingLoading } =
-    useSWR<BillingInfo>(
-      clientId ? `/api/proxy/billing/${clientId}` : null,
       fetcher,
       { revalidateOnFocus: false }
     )
@@ -109,6 +101,7 @@ export default function DashboardPage() {
           sheets={config?.sheets ?? []}
           clientId={clientId}
           isRunning={isRunning}
+          activeJobId={activeJob?.job_id ?? null}
           onJobStarted={handleJobStarted}
           onJobStopped={handleJobStopped}
         />
@@ -117,7 +110,7 @@ export default function DashboardPage() {
 
       <JobLogs logs={logs} isLoading={false} />
 
-      <BillingCard billing={billing ?? null} isLoading={billingLoading} />
+      <BillingCard />
     </div>
   )
 }

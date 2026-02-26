@@ -10,42 +10,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { DollarSign, RefreshCw, Lock, Loader2 } from "lucide-react"
+import { DollarSign, RefreshCw, Lock, Loader2, Info } from "lucide-react"
 import { toast } from "sonner"
-import type { AdminClientInfo, BillingInfo } from "@/lib/types"
+import type { AdminClientRow } from "@/lib/types"
 
 interface FinancePanelProps {
-  clients: AdminClientInfo[]
+  clients: AdminClientRow[]
 }
 
 export function FinancePanel({ clients }: FinancePanelProps) {
   const [selectedClient, setSelectedClient] = useState("")
-  const [billing, setBilling] = useState<BillingInfo | null>(null)
-  const [loading, setLoading] = useState(false)
   const [actionLoading, setActionLoading] = useState("")
 
-  async function fetchBilling(clientId: string) {
-    setLoading(true)
-    try {
-      const res = await fetch(`/api/proxy/billing/${clientId}`)
-      if (res.ok) {
-        const data = await res.json()
-        setBilling(data)
-      }
-    } catch {
-      toast.error("Не удалось загрузить биллинг")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  function handleClientChange(value: string) {
-    setSelectedClient(value)
-    setBilling(null)
-    if (value) {
-      fetchBilling(value)
-    }
-  }
+  const selected = clients.find((c) => c.client_id === selectedClient)
 
   async function handleRecalculate() {
     if (!selectedClient) return
@@ -57,9 +34,8 @@ export function FinancePanel({ clients }: FinancePanelProps) {
       )
       if (res.ok) {
         toast.success("Пересчёт выполнен")
-        fetchBilling(selectedClient)
       } else {
-        toast.error("Ошибка пересчёта")
+        toast.error("Ошибка пересчёта: endpoint не реализован на backend")
       }
     } catch {
       toast.error("Ошибка соединения")
@@ -78,9 +54,8 @@ export function FinancePanel({ clients }: FinancePanelProps) {
       )
       if (res.ok) {
         toast.success("Период закрыт")
-        fetchBilling(selectedClient)
       } else {
-        toast.error("Ошибка закрытия периода")
+        toast.error("Ошибка закрытия: endpoint не реализован на backend")
       }
     } catch {
       toast.error("Ошибка соединения")
@@ -96,7 +71,7 @@ export function FinancePanel({ clients }: FinancePanelProps) {
         <h3 className="text-lg font-semibold text-foreground">Управление финансами</h3>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Select value={selectedClient} onValueChange={handleClientChange}>
+        <Select value={selectedClient} onValueChange={setSelectedClient}>
           <SelectTrigger>
             <SelectValue placeholder="Выберите клиента" />
           </SelectTrigger>
@@ -109,35 +84,29 @@ export function FinancePanel({ clients }: FinancePanelProps) {
           </SelectContent>
         </Select>
 
-        {loading && (
-          <div className="flex justify-center py-4">
-            <Loader2 className="h-5 w-5 animate-spin text-primary" />
-          </div>
-        )}
-
-        {billing && !loading && (
+        {selected && (
           <>
             <div className="grid grid-cols-3 gap-4 rounded-lg border border-border p-4">
               <div>
-                <p className="text-xs text-muted-foreground">Период</p>
+                <p className="text-xs text-muted-foreground">За период</p>
                 <p className="text-sm font-medium text-foreground">
-                  {billing.current_period}
+                  {selected.current_period.toLocaleString("ru-RU")} руб
                 </p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Оплачено</p>
                 <p className="text-sm font-medium text-foreground">
-                  {billing.paid.toLocaleString("ru-RU")} руб
+                  {selected.total_paid.toLocaleString("ru-RU")} руб
                 </p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Долг</p>
                 <p
                   className={`text-sm font-medium ${
-                    billing.debt > 0 ? "text-destructive" : "text-success"
+                    selected.debt > 0 ? "text-destructive" : "text-success"
                   }`}
                 >
-                  {billing.debt.toLocaleString("ru-RU")} руб
+                  {selected.debt.toLocaleString("ru-RU")} руб
                 </p>
               </div>
             </div>
@@ -173,10 +142,13 @@ export function FinancePanel({ clients }: FinancePanelProps) {
           </>
         )}
 
-        {!selectedClient && !loading && (
-          <p className="py-4 text-center text-sm text-muted-foreground">
-            Выберите клиента для управления биллингом
-          </p>
+        {!selectedClient && (
+          <div className="flex flex-col items-center py-4">
+            <Info className="mb-2 h-5 w-5 text-muted-foreground" />
+            <p className="text-center text-sm text-muted-foreground">
+              Выберите клиента для просмотра финансовых данных
+            </p>
+          </div>
         )}
       </CardContent>
     </Card>
