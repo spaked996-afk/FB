@@ -1,0 +1,24 @@
+{
+  "admin": {
+    "password": "admin123",
+    "role": "admin"
+  },
+
+  "company1_user1": {
+    "password": "123",
+    "role": "client",
+    "client_id": "Company1"
+  },
+
+  "company2_user1": {
+    "password": "123",
+    "role": "client",
+    "client_id": "Company2"
+  },
+
+  "company3_user1": {
+    "password": "123",
+    "role": "client",
+    "client_id": "Company3"
+  }
+}

@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>AIVEK — Admin</title>
+
+<style>
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #0f172a;
+    color: #fff;
+}
+
+.container {
+    width: 1200px;
+    margin: 40px auto;
+}
+
+h1 {
+    margin-bottom: 30px;
+}
+
+.cards {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.card {
+    flex: 1;
+    background: #1e293b;
+    padding: 20px;
+    border-radius: 10px;
+}
+
+.tabs {
+    margin-bottom: 20px;
+}
+
+.tabs button {
+    padding: 10px 20px;
+    margin-right: 10px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.active-tab {
+    background: #3b82f6;
+    color: #fff;
+}
+
+.inactive-tab {
+    background: #334155;
+    color: #ccc;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table th, .table td {
+    padding: 12px;
+    background: #1e293b;
+}
+
+.table th {
+    background: #334155;
+}
+
+.progress-bar {
+    height: 8px;
+    background: #334155;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-bar-inner {
+    height: 100%;
+    background: #22c55e;
+    width: 0%;
+}
+
+.finance-box {
+    background: #1e293b;
+    padding: 20px;
+    border-radius: 10px;
+}
+
+select, button {
+    padding: 8px;
+    border-radius: 6px;
+    border: none;
+}
+
+button.primary {
+    background: #3b82f6;
+    color: white;
+}
+
+button.danger {
+    background: #ef4444;
+    color: white;
+}
+
+.hidden {
+    display: none;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<h1>AIVEK — Admin Panel</h1>
+
+<div class="cards">
+    <div class="card">
+        Клиентов<br><b id="stat_clients">0</b>
+    </div>
+    <div class="card">
+        Активных задач<br><b id="stat_active">0</b>
+    </div>
+    <div class="card">
+        Оборот периода<br><b id="stat_turnover">0</b>
+    </div>
+    <div class="card">
+        Общий долг<br><b id="stat_debt">0</b>
+    </div>
+</div>
+
+<div class="tabs">
+    <button id="tab_ops" class="active-tab" onclick="showOperations()">Операции</button>
+    <button id="tab_fin" class="inactive-tab" onclick="showFinance()">Финансы</button>
+</div>
+
+<!-- ОПЕРАЦИИ -->
+<div id="operations_section">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Username</th>
+                <th>Client ID</th>
+                <th>Статус</th>
+                <th>Прогресс</th>
+                <th>Active Job</th>
+            </tr>
+        </thead>
+        <tbody id="clients_table"></tbody>
+    </table>
+</div>
+
+<!-- ФИНАНСЫ -->
+<div id="finance_section" class="hidden">
+
+    <div class="finance-box">
+
+        <div style="margin-bottom:15px;">
+            Клиент:
+            <select id="finance_client_select" onchange="loadSheets(this.value)"></select>
+
+            Лист:
+            <select id="finance_sheet_select"></select>
+
+            <button class="primary" onclick="recalculateFinance()">Пересчитать</button>
+            <button class="danger" onclick="closeFinancePeriod()">Закрыть период</button>
+        </div>
+
+        <div>
+            Текущий период: <b id="finance_current">0</b><br>
+            Оплачено: <b id="finance_paid">0</b><br>
+            Долг: <b id="finance_debt">0</b>
+        </div>
+
+    </div>
+
+</div>
+
+</div>
+
+<script>
+
+let selectedClient = null;
+
+/* ---------- ТАБЫ ---------- */
+
+function showOperations() {
+    document.getElementById("operations_section").classList.remove("hidden");
+    document.getElementById("finance_section").classList.add("hidden");
+
+    document.getElementById("tab_ops").className = "active-tab";
+    document.getElementById("tab_fin").className = "inactive-tab";
+}
+
+function showFinance() {
+    document.getElementById("operations_section").classList.add("hidden");
+    document.getElementById("finance_section").classList.remove("hidden");
+
+    document.getElementById("tab_ops").className = "inactive-tab";
+    document.getElementById("tab_fin").className = "active-tab";
+}
+
+/* ---------- ОПЕРАЦИИ ---------- */
+
+async function loadOverview() {
+    const res = await fetch("/admin/overview");
+    const data = await res.json();
+
+    document.getElementById("stat_clients").innerText = data.clients.length;
+
+    const table = document.getElementById("clients_table");
+    table.innerHTML = "";
+
+    let activeCount = 0;
+
+    data.clients.forEach(c => {
+        if (c.running) activeCount++;
+
+        const row = `
+            <tr>
+                <td>${c.username}</td>
+                <td>${c.client_id}</td>
+                <td>${c.running ? "Работает" : "Ожидание"}</td>
+                <td>
+                    <div class="progress-bar">
+                        <div class="progress-bar-inner" style="width:${c.progress}%"></div>
+                    </div>
+                </td>
+                <td>${c.active_job_id || "-"}</td>
+            </tr>
+        `;
+        table.innerHTML += row;
+    });
+
+    document.getElementById("stat_active").innerText = activeCount;
+}
+
+/* ---------- ФИНАНСЫ ---------- */
+
+async function loadFinanceClients() {
+    const res = await fetch("/admin/overview");
+    const data = await res.json();
+
+    const select = document.getElementById("finance_client_select");
+    select.innerHTML = "";
+
+    data.clients.forEach(c => {
+        const option = document.createElement("option");
+        option.value = c.client_id;
+        option.textContent = c.client_id;
+        select.appendChild(option);
+    });
+
+    if (data.clients.length > 0) {
+        selectedClient = data.clients[0].client_id;
+        loadSheets(selectedClient);
+    }
+}
+
+async function loadSheets(clientId) {
+    selectedClient = clientId;
+
+    const res = await fetch(`/billing/sheets/${clientId}`);
+    const data = await res.json();
+
+    const sheetSelect = document.getElementById("finance_sheet_select");
+    sheetSelect.innerHTML = "";
+
+    if (!data.sheets) return;
+
+    data.sheets.forEach(sheet => {
+        const option = document.createElement("option");
+        option.value = sheet;
+        option.textContent = sheet;
+        sheetSelect.appendChild(option);
+    });
+}
+
+async function recalculateFinance() {
+    const sheet = document.getElementById("finance_sheet_select").value;
+    if (!sheet) return;
+
+    const res = await fetch(`/billing/recalculate/${selectedClient}`, {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify([sheet])   // ← ВАЖНО: просто массив
+    });
+
+    const data = await res.json();
+
+    const current = data.current_period_total || 0;
+    const paid = data.total_paid || 0;
+    const debt = current - paid;
+
+    document.getElementById("finance_current").innerText = current;
+    document.getElementById("finance_paid").innerText = paid;
+    document.getElementById("finance_debt").innerText = debt;
+
+    document.getElementById("stat_turnover").innerText = current;
+    document.getElementById("stat_debt").innerText = debt;
+}
+
+async function closeFinancePeriod() {
+    await fetch(`/billing/close/${selectedClient}`, {
+        method: "POST"
+    });
+
+    alert("Период закрыт");
+    recalculateFinance();
+}
+
+/* ---------- INIT ---------- */
+
+document.addEventListener("DOMContentLoaded", () => {
+    loadOverview();
+    loadFinanceClients();
+    setInterval(loadOverview, 5000);
+});
+
+</script>
+
+</body>
+</html>

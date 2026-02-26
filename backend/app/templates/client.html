@@ -1,0 +1,370 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AIVEK — Client Cabinet</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: #0f172a;
+            color: #e2e8f0;
+            margin: 0;
+            padding: 40px;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: auto;
+            background: #1e293b;
+            padding: 30px;
+            border-radius: 14px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.5);
+        }
+
+        h2 { margin-top: 0; }
+
+        button {
+            padding: 8px 15px;
+            margin-right: 10px;
+            cursor: pointer;
+            background: #3b82f6;
+            border: none;
+            color: white;
+            border-radius: 6px;
+        }
+
+        button:disabled {
+            background: #475569;
+            cursor: not-allowed;
+        }
+
+        .danger { background: #dc2626; }
+
+        .block {
+            margin-top: 25px;
+            padding: 20px;
+            background: #334155;
+            border-radius: 10px;
+        }
+
+        .progress-container {
+            width: 100%;
+            background: #1e293b;
+            height: 16px;
+            border-radius: 10px;
+            margin-top: 10px;
+        }
+
+        .progress-bar {
+            height: 16px;
+            width: 0%;
+            background: #22c55e;
+            border-radius: 10px;
+            transition: width 0.3s ease;
+        }
+
+        #logs {
+            background: #0f172a;
+            padding: 15px;
+            height: 250px;
+            overflow: auto;
+            font-size: 13px;
+            border-radius: 8px;
+            border: 1px solid #475569;
+            font-family: monospace;
+        }
+
+        .log-error { color: #ef4444; }
+        .log-cache { color: #f59e0b; }
+        .log-success { color: #22c55e; }
+        .log-info { color: #cbd5e1; }
+
+        .badge {
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+
+        .status-running { background: #16a34a; }
+        .status-waiting { background: #3b82f6; }
+        .status-error { background: #dc2626; }
+        .status-done { background: #64748b; }
+
+        .balance span {
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+
+        .balance-green  { background: #16a34a; }
+        .balance-orange { background: #ea580c; }
+        .balance-yellow { background: #eab308; color: black; }
+        .balance-red    { background: #dc2626; }
+        .balance-neutral{ background: #64748b; }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h2>AIVEK — Client Cabinet</h2>
+
+    <div class="balance">
+        Баланс: <span id="balance" class="balance-neutral">—</span>
+    </div>
+
+    <div class="block">
+        <h3>Выбор листа</h3>
+        <div id="sheetsList"></div>
+        <br>
+        <button id="startBtn" onclick="startJob()">Старт</button>
+        <button id="stopBtn" class="danger" onclick="stopJob()" disabled>Стоп</button>
+    </div>
+
+    <div class="block">
+        <h3>Статус</h3>
+        <div id="jobStatus"><span class="badge status-waiting">Ожидание</span></div>
+        <div id="lineInfo">Текущая строка: —</div>
+        <div id="found">Найдено номеров: 0</div>
+
+        <div class="progress-container">
+            <div id="progressBar" class="progress-bar"></div>
+        </div>
+    </div>
+
+    <div class="block">
+        <h3>Логи</h3>
+        <div id="logs"></div>
+    </div>
+
+    <div class="block">
+        <h3>Финансы</h3>
+        <div>Текущий период: <span id="currentTotal">0</span></div>
+        <div>Оплачено всего: <span id="totalPaid">0</span></div>
+        <div>Долг: <span id="debt">0</span></div>
+        <hr>
+        <div id="sheetBreakdown"></div>
+    </div>
+
+</div>
+
+<script>
+
+const CLIENT_ID = "{{ client_id }}";
+let currentJobId = null;
+
+/* ================= INIT ================= */
+
+window.onload = () => {
+    loadSheets();
+    loadBilling();
+    loadBalance();
+    checkActiveJob();
+    setInterval(loadBalance, 20000);
+};
+
+/* ================= ACTIVE JOB CHECK ================= */
+
+async function checkActiveJob() {
+    const res = await fetch(`/jobs/${CLIENT_ID}`);
+    const data = await res.json();
+
+    if (data.running && data.active_job_id) {
+        currentJobId = data.active_job_id;
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+        setStatus("running");
+        poll();
+    }
+}
+
+/* ================= SHEETS ================= */
+
+async function loadSheets() {
+    const res = await fetch(`/billing/sheets/${CLIENT_ID}`);
+    const data = await res.json();
+
+    sheetsList.innerHTML = "";
+
+    if (!data.sheets) return;
+
+    data.sheets.forEach(name => {
+        const row = document.createElement("div");
+
+        const radio = document.createElement("input");
+        radio.type = "radio";
+        radio.name = "worksheet";
+        radio.value = name;
+
+        const label = document.createElement("label");
+        label.innerText = " " + name;
+
+        row.appendChild(radio);
+        row.appendChild(label);
+
+        sheetsList.appendChild(row);
+    });
+}
+
+/* ================= JOB ================= */
+
+async function startJob() {
+    const selected = document.querySelector("input[name='worksheet']:checked");
+    if (!selected) return alert("Выберите лист");
+
+    const res = await fetch("/jobs/start", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+            client_id: CLIENT_ID,
+            worksheet_name: selected.value
+        })
+    });
+
+    const data = await res.json();
+
+    if (data.error) {
+        alert(data.error);
+        return;
+    }
+
+    currentJobId = data.job_id;
+
+    startBtn.disabled = true;
+    stopBtn.disabled = false;
+
+    setStatus("running");
+    poll();
+}
+
+async function stopJob() {
+    if (!currentJobId) return;
+
+    await fetch(`/jobs/${CLIENT_ID}/${currentJobId}/stop`, {
+        method: "POST"
+    });
+
+    stopBtn.disabled = true;
+}
+
+/* ================= POLL ================= */
+
+async function poll() {
+    if (!currentJobId) return;
+
+    const res = await fetch(`/jobs/${CLIENT_ID}/${currentJobId}`);
+    const job = await res.json();
+
+    updateUI(job);
+
+    if (job.running) {
+        setTimeout(poll, 1000);
+    } else {
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+        setStatus(job.error ? "error" : "done");
+    }
+}
+
+function updateUI(job) {
+
+    lineInfo.innerText = "Текущая строка: " + (job.progress_current || 0);
+    found.innerText = "Найдено номеров: " + (job.found || 0);
+
+    let percent = 0;
+    if (job.progress_total > 0) {
+        percent = (job.progress_current / job.progress_total) * 100;
+    }
+
+    progressBar.style.width = percent + "%";
+
+    fetch(`/jobs/${CLIENT_ID}/${currentJobId}/logs`)
+        .then(r => r.json())
+        .then(data => {
+            logs.innerHTML = "";
+
+            if (!data.logs) return;
+
+            data.logs.forEach(line => {
+                const div = document.createElement("div");
+
+                if (line.includes("ERROR")) div.className = "log-error";
+                else if (line.includes("CACHE")) div.className = "log-cache";
+                else if (line.includes("SUCCESS")) div.className = "log-success";
+                else div.className = "log-info";
+
+                div.innerText = line;
+                logs.appendChild(div);
+            });
+
+            logs.scrollTop = logs.scrollHeight;
+        });
+}
+
+/* ================= STATUS ================= */
+
+function setStatus(type) {
+    let badge = "";
+
+    if (type === "running")
+        badge = '<span class="badge status-running">Выполняется</span>';
+    else if (type === "error")
+        badge = '<span class="badge status-error">Ошибка</span>';
+    else if (type === "done")
+        badge = '<span class="badge status-done">Завершено</span>';
+    else
+        badge = '<span class="badge status-waiting">Ожидание</span>';
+
+    jobStatus.innerHTML = badge;
+}
+
+/* ================= BALANCE ================= */
+
+async function loadBalance() {
+    const res = await fetch(`/balance/${CLIENT_ID}`);
+    const data = await res.json();
+
+    const el = document.getElementById("balance");
+
+    if (!data.balance) {
+        el.innerText = "—";
+        el.className = "balance-neutral";
+        return;
+    }
+
+    const balance = parseFloat(data.balance);
+    el.innerText = balance.toFixed(2);
+    el.className = "";
+
+    if (balance < 50) el.classList.add("balance-red");
+    else if (balance < 200) el.classList.add("balance-yellow");
+    else if (balance < 1000) el.classList.add("balance-orange");
+    else el.classList.add("balance-green");
+}
+
+/* ================= BILLING ================= */
+
+async function loadBilling() {
+    const res = await fetch(`/billing/${CLIENT_ID}`);
+    const data = await res.json();
+
+    currentTotal.innerText = data.current_period_total || 0;
+    totalPaid.innerText = data.total_paid || 0;
+    debt.innerText = data.current_period_total || 0;
+
+    sheetBreakdown.innerHTML = "";
+
+    if (data.sheet_totals) {
+        for (let sheet in data.sheet_totals) {
+            const div = document.createElement("div");
+            div.innerText = sheet + " — " + data.sheet_totals[sheet];
+            sheetBreakdown.appendChild(div);
+        }
+    }
+}
+
+</script>
+
+</body>
+</html>
